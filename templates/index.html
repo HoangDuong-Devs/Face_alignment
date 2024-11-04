@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Video</title>
+    <style>
+        /* CSS styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1200px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .video-section {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            margin: 0 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        h2 {
+            margin: 10px 0;
+        }
+        input[type="file"] {
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px dashed #007bff;
+            border-radius: 5px;
+            width: 100%;
+            background-color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        input[type="file"]:hover {
+            background-color: #e9f5ff;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+            width: 100%;
+            height: 240px;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 10px;
+        }
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            border-radius: 5px;
+        }
+        .processed-video-container {
+            margin-top: 65px;
+        }
+        .arrow {
+            font-size: 36px;
+            position: absolute;
+            top: 50%;
+            left: calc(50% - 20px);
+            transform: translateY(-50%);
+            color: #007bff;
+            white-space: nowrap;
+        }
+        video {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="video-section">
+        <h1>Upload Video</h1>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" name="file" accept="video/*" onchange="uploadVideo(event)" required>
+            <h2>Selected Video:</h2>
+            <div class="video-container">
+                <div id="placeholder1" class="video-placeholder">No Video Available</div>
+                <video id="videoPlayer1" controls style="display: none;">
+                    <source id="videoSource1" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </form>
+    </div>
+
+    <div class="arrow">=></div>
+
+    <div class="video-section">
+        <h1>Process Video</h1>
+        <button onclick="processVideo()">Process</button>
+        <div class="processed-video-container">
+            <div class="video-container">
+                <div id="placeholder2" class="video-placeholder">No Video Available</div>
+                <video id="videoPlayer2" controls style="display: none;">
+                    <source id="videoSource2" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let uploadedFilename = '';
+
+    async function uploadVideo(event) {
+        event.preventDefault();
+
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch('/uploadvideo/', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error("Error uploading video:", error);
+            alert("Error uploading video: " + (error.error || "Unknown error"));
+            return;
+        }
+
+        const result = await response.json();
+        console.log(result);
+
+        // Kiểm tra nếu filename có trong phản hồi
+        if (result.filename) {
+            uploadedFilename = result.filename;
+
+            // Hiển thị video đã upload
+            const videoPlayer = document.getElementById("videoPlayer1");
+            const videoSource = videoPlayer.querySelector('source');
+            const placeholder = document.getElementById("placeholder1");
+
+            if (file) {
+                const url = URL.createObjectURL(file);
+                videoSource.src = url;
+                placeholder.style.display = 'none';
+                videoPlayer.style.display = 'block';
+                videoPlayer.load();
+            }
+        } else {
+            alert("Filename not returned from the server.");
+        }
+    }
+
+async function processVideo() {
+    // Kiểm tra xem đã upload video chưa
+    if (!uploadedFilename) {
+        alert("Please upload a video first.");
+        return;
+    } else {
+        alert("Uploaded filename: " + uploadedFilename);
+    }
+
+    // Đảm bảo uploadedFilename được định nghĩa
+    uploadedFilename = String(uploadedFilename);
+
+    // Gửi request đến API để xử lý video
+    const response = await fetch('/processvideo/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ filename: uploadedFilename })
+    });
+
+    const responseBody = await response.json();
+    console.log(responseBody);
+
+    // Kiểm tra trạng thái phản hồi
+    if (!response.ok) {
+        console.error("Error processing video:", responseBody);
+        alert("Error processing video: " + (responseBody.detail?.[0]?.msg || "Unknown error"));
+        return;
+    }
+
+    // Hiển thị video đã xử lý nếu thành công
+    if (responseBody.processed_video) {
+        const videoElement = document.getElementById("videoPlayer2");
+        const sourceElement = document.getElementById("videoSource2");
+
+        // Cập nhật đường dẫn video đã xử lý
+        sourceElement.src = '/' + responseBody.processed_video;
+        videoElement.load();  // Tải lại video mới
+
+        // Hiển thị video và ẩn placeholder
+        document.getElementById("placeholder2").style.display = "none";
+        videoElement.style.display = "block";
+    } else {
+        alert("Processed video not available.");
+    }
+}
+
+</script>
+</body>
+</html>
